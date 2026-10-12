@@ -7,7 +7,9 @@ import com.bank.model.CurrentAccount;
 import com.bank.model.FixedDepositAccount;
 import com.bank.model.SavingsAccount;
 import com.bank.repository.AccountRepository;
+import com.bank.model.TransactionType;
 
+import java.time.Clock;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -21,15 +23,21 @@ public class AccountService {
     private final CustomerService customerService;
     private final Supplier<BankRules> rules;
     private final Predicate<String> hasOutstandingLoan;
+    private final Ledger ledger;
+    private final Clock clock;
 
     public AccountService(AccountRepository accountRepository,
                           CustomerService customerService,
                           Supplier<BankRules> rules,
-                          Predicate<String> hasOutstandingLoan) {
+                          Predicate<String> hasOutstandingLoan,
+                          Ledger ledger,
+                          Clock clock) {
         this.accountRepository = Objects.requireNonNull(accountRepository);
         this.customerService = Objects.requireNonNull(customerService);
         this.rules = Objects.requireNonNull(rules);
         this.hasOutstandingLoan = Objects.requireNonNull(hasOutstandingLoan);
+        this.ledger = Objects.requireNonNull(ledger);
+        this.clock = Objects.requireNonNull(clock);
     }
 
     // ---------- Opening ----------
@@ -37,31 +45,37 @@ public class AccountService {
     public SavingsAccount openSavings(String customerId, BigDecimal openingDeposit) {
         String ownerId = customerService.getActiveCustomer(customerId).getCustomerId();
         BankRules r = rules.get();
-        SavingsAccount account = SavingsAccount.open(
+        return saveNew(SavingsAccount.open(
                 accountRepository.nextAccountNumber(), ownerId, openingDeposit,
                 r.savingsMinimumBalance(), r.savingsAnnualInterestRate(),
-                r.savingsMonthlyWithdrawalLimit(), LocalDate.now());
-        accountRepository.add(account);
-        return account;
+                r.savingsMonthlyWithdrawalLimit(), today()));
     }
 
     public CurrentAccount openCurrent(String customerId, BigDecimal openingDeposit) {
         String ownerId = customerService.getActiveCustomer(customerId).getCustomerId();
-        CurrentAccount account = CurrentAccount.open(
+        return saveNew(CurrentAccount.open(
                 accountRepository.nextAccountNumber(), ownerId, openingDeposit,
-                rules.get().currentOverdraftLimit(), LocalDate.now());
-        accountRepository.add(account);
-        return account;
+                rules.get().currentOverdraftLimit(), today()));
     }
 
     public FixedDepositAccount openFixedDeposit(String customerId, BigDecimal deposit,
                                                 int termMonths) {
         String ownerId = customerService.getActiveCustomer(customerId).getCustomerId();
-        FixedDepositAccount account = FixedDepositAccount.open(
+        return saveNew(FixedDepositAccount.open(
                 accountRepository.nextAccountNumber(), ownerId, deposit,
-                rules.get().fixedDepositAnnualInterestRate(), termMonths, LocalDate.now());
+                rules.get().fixedDepositAnnualInterestRate(), termMonths, today()));
+    }
+
+    /** Stores a newly opened account and records its opening deposit. Returns the same type it was given. */
+    private <T extends Account> T saveNew(T account) {
         accountRepository.add(account);
+        ledger.recordSuccess(TransactionType.OPENING_DEPOSIT, null,
+                account.getAccountNumber(), account.getBalance());
         return account;
+    }
+
+    private LocalDate today() {
+        return LocalDate.now(clock);
     }
 
     // ---------- Queries ----------

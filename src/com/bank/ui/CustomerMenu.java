@@ -1,14 +1,11 @@
 package com.bank.ui;
 
-import com.bank.exception.NotFoundException;
 import com.bank.model.Customer;
 import com.bank.service.AccountService;
 import com.bank.service.CustomerService;
 import com.bank.service.CustomerUpdate;
 
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 public class CustomerMenu {
 
@@ -36,14 +33,6 @@ public class CustomerMenu {
 
     public void show() {
         menu.show();
-    }
-
-    private void runSafely(Runnable action) {
-        try {
-            action.run();
-        } catch (IllegalArgumentException | IllegalStateException | NotFoundException e) {
-            System.out.println("Error: " + e.getMessage());
-        }
     }
 
     // ---------- Actions ----------
