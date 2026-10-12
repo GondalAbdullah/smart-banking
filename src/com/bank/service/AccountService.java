@@ -10,7 +10,10 @@ import com.bank.model.Permission;
 import com.bank.model.SavingsAccount;
 import com.bank.model.TransactionType;
 import com.bank.repository.AccountRepository;
+import com.bank.event.BankEvent;
 
+import java.time.LocalDateTime;
+import java.util.function.Consumer;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -27,6 +30,7 @@ public class AccountService {
     private final Predicate<String> hasOutstandingLoan;
     private final Ledger ledger;
     private final Session session;
+    private final Consumer<BankEvent> events;
     private final Clock clock;
 
     public AccountService(AccountRepository accountRepository,
@@ -35,6 +39,7 @@ public class AccountService {
                           Predicate<String> hasOutstandingLoan,
                           Ledger ledger,
                           Session session,
+                          Consumer<BankEvent> events,
                           Clock clock) {
         this.accountRepository = Objects.requireNonNull(accountRepository);
         this.customerService = Objects.requireNonNull(customerService);
@@ -42,6 +47,7 @@ public class AccountService {
         this.hasOutstandingLoan = Objects.requireNonNull(hasOutstandingLoan);
         this.ledger = Objects.requireNonNull(ledger);
         this.session = Objects.requireNonNull(session);
+        this.events = Objects.requireNonNull(events);
         this.clock = Objects.requireNonNull(clock);
     }
 
@@ -123,6 +129,8 @@ public class AccountService {
         account.close();
         accountRepository.update(account);
         session.audit(AuditAction.ACCOUNT_CLOSED, account.getAccountNumber());
+        events.accept(new BankEvent.AccountClosed(
+                account.getAccountNumber(), account.getCustomerId(), LocalDateTime.now(clock)));    
     }
 
     private LocalDate today() {

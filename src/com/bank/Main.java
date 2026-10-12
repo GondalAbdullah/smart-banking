@@ -32,6 +32,10 @@ import com.bank.ui.LoginScreen;
 import com.bank.ui.MainMenu;
 import com.bank.ui.TransactionMenu;
 import com.bank.ui.ReportScreen;
+import com.bank.event.EventBus;
+import com.bank.notification.ConsoleEmailSender;
+import com.bank.notification.NotificationService;
+
 
 import java.nio.file.Path;
 import java.time.Clock;
@@ -55,6 +59,10 @@ public class Main {
         PasswordHasher hasher = new PasswordHasher();
         AuditLog auditLog = new AuditLog(auditRepository, clock);
         Session session = new Session(auditLog);
+        EventBus eventBus = new EventBus();
+        NotificationService notificationService =
+                new NotificationService(customerRepository, new ConsoleEmailSender());
+        eventBus.subscribe(notificationService::handle);
 
         // Services
         AuthService authService = new AuthService(employeeRepository, hasher, session, auditLog);
@@ -69,9 +77,11 @@ public class Main {
                 accountNumber -> false,
                 ledger,
                 session,
+                eventBus::publish,
                 clock);
         TransactionService transactionService = new TransactionService(
-                accountService, accountRepository, transactionRepository, ledger, session, clock);
+                accountService, accountRepository, transactionRepository, ledger, session,
+                eventBus::publish, clock);
         ReportService reportService = new ReportService(customerRepository, accountRepository, session, clock);
         // Menus: they get a read-only question ("may the current user do X?"), never the Session
         Predicate<Permission> allowed = session::can;
