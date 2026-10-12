@@ -10,6 +10,7 @@ public enum Permission {
     PROCESS_TRANSACTIONS("process deposits, withdrawals and transfers"),
     MANAGE_ACCOUNT_STATUS("freeze, unfreeze or close accounts"),
     APPLY_INTEREST("apply monthly interest"),
+    RECORD_LOANS("record loan applications and repayments"),
     APPROVE_LOANS("approve or reject loans"),
     VIEW_BRANCH_REPORT("view branch reports"),
     VIEW_AUDIT_LOG("view the audit trail"),

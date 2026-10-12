@@ -1,6 +1,7 @@
 package com.bank.service;
 
 import com.bank.model.AccountStatus;
+import com.bank.model.LoanStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -14,7 +15,9 @@ public record BranchReport(
         Map<AccountStatus, Long> accountsByStatus,
         Map<String, TypeSummary> openAccountsByType,
         BigDecimal totalDeposits,
-        BigDecimal totalOverdrawn) {
+        BigDecimal totalOverdrawn,
+        Map<LoanStatus, Long> loansByStatus,
+        BigDecimal loansOutstanding) {
 
     /** How many open accounts of one type there are, and what they hold together. */
     public record TypeSummary(long count, BigDecimal balance) {

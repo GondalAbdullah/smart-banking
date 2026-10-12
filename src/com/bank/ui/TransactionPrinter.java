@@ -42,6 +42,8 @@ final class TransactionPrinter {
             case DEPOSIT -> "Cash deposit";
             case WITHDRAWAL -> "Cash withdrawal";
             case INTEREST -> "Monthly interest";
+            case LOAN_DISBURSEMENT -> "Loan disbursement";
+            case LOAN_REPAYMENT -> "Loan repayment";
             case TRANSFER -> accountNumber.equals(tx.sourceAccount())
                     ? "Transfer to " + tx.destinationAccount()
                     : "Transfer from " + tx.sourceAccount();

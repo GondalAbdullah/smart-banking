@@ -13,18 +13,20 @@ public class MainMenu {
     private final CustomerMenu customerMenu;
     private final AccountMenu accountMenu;
     private final TransactionMenu transactionMenu;
+    private final LoanMenu loanMenu;
     private final AdminMenu adminMenu;
     private final ReportScreen reportScreen;
     private final ConsoleInput input;
     private final Predicate<Permission> allowed;
 
     public MainMenu(AuthService authService, CustomerMenu customerMenu, AccountMenu accountMenu,
-                    TransactionMenu transactionMenu, AdminMenu adminMenu, ReportScreen reportScreen,
-                    ConsoleInput input, Predicate<Permission> allowed) {
+                    TransactionMenu transactionMenu, LoanMenu loanMenu, AdminMenu adminMenu,
+                    ReportScreen reportScreen, ConsoleInput input, Predicate<Permission> allowed) {
         this.authService = authService;
         this.customerMenu = customerMenu;
         this.accountMenu = accountMenu;
         this.transactionMenu = transactionMenu;
+        this.loanMenu = loanMenu;
         this.adminMenu = adminMenu;
         this.reportScreen = reportScreen;
         this.input = input;
@@ -38,8 +40,10 @@ public class MainMenu {
                 .option("Customers", customerMenu::show)
                 .option("Accounts", accountMenu::show)
                 .option("Transactions", transactionMenu::show)
+                .option("Loans", loanMenu::show)
                 .option("Branch report", Permission.VIEW_BRANCH_REPORT, reportScreen::show)
-                .option("Administration", Permission.MANAGE_EMPLOYEES, adminMenu::show).option("Change my password", this::changePassword)
+                .option("Administration", Permission.MANAGE_EMPLOYEES, adminMenu::show)
+                .option("Change my password", this::changePassword)
                 .exitLabel("Log out")
                 .show();
 

@@ -9,7 +9,7 @@ import static com.bank.model.Permission.*;
 public enum Role {
 
     TELLER("Bank Teller", EnumSet.of(
-            REGISTER_CUSTOMER, UPDATE_CUSTOMER, OPEN_ACCOUNT, PROCESS_TRANSACTIONS)),
+            REGISTER_CUSTOMER, UPDATE_CUSTOMER, OPEN_ACCOUNT, PROCESS_TRANSACTIONS, RECORD_LOANS)),
 
     MANAGER("Bank Manager", including(TELLER, EnumSet.of(
             DEACTIVATE_CUSTOMER, MANAGE_ACCOUNT_STATUS, APPLY_INTEREST,

@@ -1,6 +1,7 @@
 package com.bank.ui;
 
 import com.bank.model.AccountStatus;
+import com.bank.model.LoanStatus;
 import com.bank.service.BranchReport;
 import com.bank.service.ReportService;
 
@@ -40,6 +41,11 @@ public class ReportScreen {
 
         System.out.printf("Total deposits held:    %,16.2f%n", report.totalDeposits());
         System.out.printf("Total overdrafts owed:  %,16.2f%n", report.totalOverdrawn());
-        System.out.println("Loans:                  available once the Loans module is built");
+
+        String loanStatuses = Arrays.stream(LoanStatus.values())
+                .map(status -> status + " " + report.loansByStatus().getOrDefault(status, 0L))
+                .collect(Collectors.joining(" | "));
+        System.out.println("Loans:                  " + loanStatuses);
+        System.out.printf("Loans outstanding:      %,16.2f%n", report.loansOutstanding());
     }
 }

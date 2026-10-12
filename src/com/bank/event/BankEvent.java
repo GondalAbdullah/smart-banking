@@ -28,4 +28,12 @@ public sealed interface BankEvent {
     record AccountClosed(String accountNumber, String customerId, LocalDateTime closedAt)
             implements BankEvent {
     }
+
+    record LoanApproved(String loanId, String customerId, String accountNumber, BigDecimal principal)
+            implements BankEvent {
+    }
+
+    record LoanRejected(String loanId, String customerId, BigDecimal principal)
+            implements BankEvent {
+    }
 }

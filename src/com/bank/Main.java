@@ -1,6 +1,9 @@
 package com.bank;
 
+import com.bank.event.EventBus;
 import com.bank.model.Permission;
+import com.bank.notification.ConsoleEmailSender;
+import com.bank.notification.NotificationService;
 import com.bank.repository.AccountRepository;
 import com.bank.repository.AuditRepository;
 import com.bank.repository.CustomerRepository;
@@ -9,33 +12,33 @@ import com.bank.repository.InMemoryAccountRepository;
 import com.bank.repository.InMemoryAuditRepository;
 import com.bank.repository.InMemoryCustomerRepository;
 import com.bank.repository.InMemoryEmployeeRepository;
+import com.bank.repository.InMemoryLoanRepository;
+import com.bank.repository.LoanRepository;
 import com.bank.repository.InMemoryTransactionRepository;
-import com.bank.repository.TransactionRepository;
 import com.bank.repository.PropertiesRulesRepository;
 import com.bank.repository.RulesRepository;
+import com.bank.repository.TransactionRepository;
 import com.bank.security.PasswordHasher;
-import com.bank.service.ReportService;
-import com.bank.service.RulesService;
 import com.bank.service.AccountService;
 import com.bank.service.AuditLog;
 import com.bank.service.AuthService;
 import com.bank.service.CustomerService;
 import com.bank.service.EmployeeService;
 import com.bank.service.Ledger;
+import com.bank.service.LoanService;
+import com.bank.service.ReportService;
+import com.bank.service.RulesService;
 import com.bank.service.Session;
 import com.bank.service.TransactionService;
 import com.bank.ui.AccountMenu;
 import com.bank.ui.AdminMenu;
 import com.bank.ui.ConsoleInput;
 import com.bank.ui.CustomerMenu;
+import com.bank.ui.LoanMenu;
 import com.bank.ui.LoginScreen;
 import com.bank.ui.MainMenu;
-import com.bank.ui.TransactionMenu;
 import com.bank.ui.ReportScreen;
-import com.bank.event.EventBus;
-import com.bank.notification.ConsoleEmailSender;
-import com.bank.notification.NotificationService;
-
+import com.bank.ui.TransactionMenu;
 
 import java.nio.file.Path;
 import java.time.Clock;
@@ -55,10 +58,14 @@ public class Main {
         EmployeeRepository employeeRepository = new InMemoryEmployeeRepository();
         AuditRepository auditRepository = new InMemoryAuditRepository();
         RulesRepository rulesRepository = new PropertiesRulesRepository(Path.of("data", "rules.properties"));
+        LoanRepository loanRepository = new InMemoryLoanRepository();
+
         // Security
         PasswordHasher hasher = new PasswordHasher();
         AuditLog auditLog = new AuditLog(auditRepository, clock);
         Session session = new Session(auditLog);
+
+        // Events: services publish what happened; listeners (like notifications) react
         EventBus eventBus = new EventBus();
         NotificationService notificationService =
                 new NotificationService(customerRepository, new ConsoleEmailSender());
@@ -74,7 +81,7 @@ public class Main {
                 accountRepository,
                 customerService,
                 rulesService::current,  // asks for the rules in force each time an account opens
-                accountNumber -> false,
+                loanRepository::hasOutstandingLoan,
                 ledger,
                 session,
                 eventBus::publish,
@@ -82,16 +89,21 @@ public class Main {
         TransactionService transactionService = new TransactionService(
                 accountService, accountRepository, transactionRepository, ledger, session,
                 eventBus::publish, clock);
-        ReportService reportService = new ReportService(customerRepository, accountRepository, session, clock);
+        LoanService loanService = new LoanService(loanRepository, customerService, accountService,
+                transactionService, session, eventBus::publish, clock);
+        ReportService reportService = new ReportService(
+                customerRepository, accountRepository, loanRepository, session, clock);
+
         // Menus: they get a read-only question ("may the current user do X?"), never the Session
         Predicate<Permission> allowed = session::can;
         CustomerMenu customerMenu = new CustomerMenu(customerService, accountService, input, allowed);
         AccountMenu accountMenu = new AccountMenu(accountService, input, allowed);
         TransactionMenu transactionMenu = new TransactionMenu(transactionService, accountService, input, allowed);
+        LoanMenu loanMenu = new LoanMenu(loanService, input, allowed);
         AdminMenu adminMenu = new AdminMenu(employeeService, rulesService, input, allowed);
         ReportScreen reportScreen = new ReportScreen(reportService);
         MainMenu mainMenu = new MainMenu(authService, customerMenu, accountMenu, transactionMenu,
-                adminMenu, reportScreen, input, allowed);
+                loanMenu, adminMenu, reportScreen, input, allowed);
         LoginScreen loginScreen = new LoginScreen(authService, input);
 
         authService.ensureDefaultAdmin().ifPresent(admin -> System.out.println(

@@ -11,7 +11,9 @@ public enum TransactionType {
     DEPOSIT(false, true),
     WITHDRAWAL(true, false),
     TRANSFER(true, true),
-    INTEREST(false, true);
+    INTEREST(false, true),
+    LOAN_DISBURSEMENT(false, true),
+    LOAN_REPAYMENT(true, false);
 
     private final boolean hasSource;
     private final boolean hasDestination;
