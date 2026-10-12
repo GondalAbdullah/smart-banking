@@ -1,5 +1,6 @@
 package com.bank.service;
 
+import com.bank.event.BankEvent;
 import com.bank.exception.TransactionNotAllowedException;
 import com.bank.model.Account;
 import com.bank.model.AccountStatus;
@@ -17,6 +18,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 public class TransactionService {
 
@@ -27,6 +29,7 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final Ledger ledger;
     private final Session session;
+    private final Consumer<BankEvent> events;
     private final Clock clock;
 
     public TransactionService(AccountService accountService,
@@ -34,12 +37,14 @@ public class TransactionService {
                               TransactionRepository transactionRepository,
                               Ledger ledger,
                               Session session,
+                              Consumer<BankEvent> events,
                               Clock clock) {
         this.accountService = Objects.requireNonNull(accountService);
         this.accountRepository = Objects.requireNonNull(accountRepository);
         this.transactionRepository = Objects.requireNonNull(transactionRepository);
         this.ledger = Objects.requireNonNull(ledger);
         this.session = Objects.requireNonNull(session);
+        this.events = Objects.requireNonNull(events);
         this.clock = Objects.requireNonNull(clock);
     }
 
@@ -52,9 +57,12 @@ public class TransactionService {
 
         attempt(TransactionType.DEPOSIT, null, number, amount,
                 () -> account.deposit(amount));
-
+        
         accountRepository.update(account);
-        return ledger.recordSuccess(TransactionType.DEPOSIT, null, number, amount);
+        Transaction transaction = ledger.recordSuccess(TransactionType.DEPOSIT, null, number, amount);
+        events.accept(new BankEvent.DepositMade(
+                transaction, account.getCustomerId(), account.getBalance()));
+        return transaction;
     }
 
     public Transaction withdraw(String accountNumber, BigDecimal amount) {
@@ -67,7 +75,10 @@ public class TransactionService {
                 () -> account.withdraw(amount, today));
 
         accountRepository.update(account);
-        return ledger.recordSuccess(TransactionType.WITHDRAWAL, number, null, amount);
+        Transaction transaction = ledger.recordSuccess(TransactionType.WITHDRAWAL, number, null, amount);
+        events.accept(new BankEvent.WithdrawalMade(
+                transaction, account.getCustomerId(), account.getBalance()));
+        return transaction;
     }
 
     /** Atomic: either both balances change or neither does. One transaction, one reference. */
@@ -93,7 +104,11 @@ public class TransactionService {
 
         accountRepository.update(source);
         accountRepository.update(destination);
-        return ledger.recordSuccess(TransactionType.TRANSFER, from, to, amount);
+        Transaction transaction = ledger.recordSuccess(TransactionType.TRANSFER, from, to, amount);
+        events.accept(new BankEvent.TransferMade(transaction,
+                source.getCustomerId(), source.getBalance(),
+                destination.getCustomerId(), destination.getBalance()));
+        return transaction;
     }
 
     /** Credits a month's interest to every active account. Returns the interest transactions. */
