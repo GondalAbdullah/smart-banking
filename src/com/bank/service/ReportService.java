@@ -3,9 +3,12 @@ package com.bank.service;
 import com.bank.model.Account;
 import com.bank.model.AccountStatus;
 import com.bank.model.Customer;
+import com.bank.model.Loan;
+import com.bank.model.LoanStatus;
 import com.bank.model.Permission;
 import com.bank.repository.AccountRepository;
 import com.bank.repository.CustomerRepository;
+import com.bank.repository.LoanRepository;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -24,13 +27,15 @@ public class ReportService {
 
     private final CustomerRepository customers;
     private final AccountRepository accounts;
+    private final LoanRepository loans;
     private final Session session;
     private final Clock clock;
 
     public ReportService(CustomerRepository customers, AccountRepository accounts,
-                         Session session, Clock clock) {
+                         LoanRepository loans, Session session, Clock clock) {
         this.customers = Objects.requireNonNull(customers);
         this.accounts = Objects.requireNonNull(accounts);
+        this.loans = Objects.requireNonNull(loans);
         this.session = Objects.requireNonNull(session);
         this.clock = Objects.requireNonNull(clock);
     }
@@ -65,6 +70,15 @@ public class ReportService {
         BigDecimal deposits = sumOfBalances(open, balance -> balance.signum() > 0);
         BigDecimal overdrawn = sumOfBalances(open, balance -> balance.signum() < 0).negate();
 
+        List<Loan> allLoans = loans.findAll();
+        Map<LoanStatus, Long> loansByStatus = allLoans.stream()
+                .collect(Collectors.groupingBy(Loan::getStatus,
+                        () -> new EnumMap<>(LoanStatus.class),
+                        Collectors.counting()));
+        BigDecimal loansOutstanding = allLoans.stream()
+                .map(Loan::getOutstanding)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         return new BranchReport(
                 LocalDateTime.now(clock),
                 customersByActive.get(true),
@@ -72,7 +86,9 @@ public class ReportService {
                 Collections.unmodifiableMap(byStatus),
                 Collections.unmodifiableMap(byType),
                 deposits,
-                overdrawn);
+                overdrawn,
+                Collections.unmodifiableMap(loansByStatus),
+                loansOutstanding);
     }
 
     private static BigDecimal sumOfBalances(List<Account> accounts, Predicate<BigDecimal> which) {

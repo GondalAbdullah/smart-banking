@@ -53,13 +53,7 @@ public class TransactionService {
     public Transaction deposit(String accountNumber, BigDecimal amount) {
         session.require(Permission.PROCESS_TRANSACTIONS);
         Account account = accountService.getByNumber(accountNumber);
-        String number = account.getAccountNumber();
-
-        attempt(TransactionType.DEPOSIT, null, number, amount,
-                () -> account.deposit(amount));
-        
-        accountRepository.update(account);
-        Transaction transaction = ledger.recordSuccess(TransactionType.DEPOSIT, null, number, amount);
+        Transaction transaction = credit(TransactionType.DEPOSIT, account, amount);
         events.accept(new BankEvent.DepositMade(
                 transaction, account.getCustomerId(), account.getBalance()));
         return transaction;
@@ -68,17 +62,30 @@ public class TransactionService {
     public Transaction withdraw(String accountNumber, BigDecimal amount) {
         session.require(Permission.PROCESS_TRANSACTIONS);
         Account account = accountService.getByNumber(accountNumber);
-        String number = account.getAccountNumber();
-        LocalDate today = today();
-
-        attempt(TransactionType.WITHDRAWAL, number, null, amount,
-                () -> account.withdraw(amount, today));
-
-        accountRepository.update(account);
-        Transaction transaction = ledger.recordSuccess(TransactionType.WITHDRAWAL, number, null, amount);
+        Transaction transaction = debit(TransactionType.WITHDRAWAL, account, amount);
         events.accept(new BankEvent.WithdrawalMade(
                 transaction, account.getCustomerId(), account.getBalance()));
         return transaction;
+    }
+
+    /**
+     * Puts money into an account under the account's rules and records it with the given type.
+     * Package-private: the calling service has already checked permissions.
+     */
+    Transaction credit(TransactionType type, Account account, BigDecimal amount) {
+        String number = account.getAccountNumber();
+        attempt(type, null, number, amount, () -> account.deposit(amount));
+        accountRepository.update(account);
+        return ledger.recordSuccess(type, null, number, amount);
+    }
+
+    /** Takes money out of an account under the account's rules. Same contract as credit. */
+    Transaction debit(TransactionType type, Account account, BigDecimal amount) {
+        String number = account.getAccountNumber();
+        LocalDate today = today();
+        attempt(type, number, null, amount, () -> account.withdraw(amount, today));
+        accountRepository.update(account);
+        return ledger.recordSuccess(type, number, null, amount);
     }
 
     /** Atomic: either both balances change or neither does. One transaction, one reference. */

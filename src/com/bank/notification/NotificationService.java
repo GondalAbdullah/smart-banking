@@ -59,6 +59,16 @@ public class NotificationService {
                     send(customerId, "Account closed",
                             "Your account " + masked(accountNumber) + " was closed on " + when(closedAt) + ".",
                             "If you did not request this, please contact your branch immediately.");
+
+            case BankEvent.LoanApproved(var loanId, var customerId, var accountNumber, var principal) ->
+                    send(customerId, "Loan approved",
+                            "Your loan " + loanId + " of " + money(principal) + " has been approved.",
+                            "The money has been credited to account " + masked(accountNumber) + ".");
+
+            case BankEvent.LoanRejected(var loanId, var customerId, var principal) ->
+                    send(customerId, "Loan application not approved",
+                            "Your loan application " + loanId + " for " + money(principal) + " was not approved.",
+                            "Please contact your branch for details.");
         }
     }
 
