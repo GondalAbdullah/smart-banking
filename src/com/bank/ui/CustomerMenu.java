@@ -2,6 +2,7 @@ package com.bank.ui;
 
 import com.bank.exception.NotFoundException;
 import com.bank.model.Customer;
+import com.bank.service.AccountService;
 import com.bank.service.CustomerService;
 import com.bank.service.CustomerUpdate;
 
@@ -14,39 +15,27 @@ public class CustomerMenu {
     private static final String ROW_FORMAT = "%-6s %-22s %-26s %-13s %-9s%n";
 
     private final CustomerService customerService;
+    private final AccountService accountService;
     private final ConsoleInput input;
-    private final Map<String, MenuOption> options = new LinkedHashMap<>();
+    private final Menu menu;
 
-    public CustomerMenu(CustomerService customerService, ConsoleInput input) {
+    public CustomerMenu(CustomerService customerService, AccountService accountService,
+                        ConsoleInput input) {
         this.customerService = customerService;
+        this.accountService = accountService;
         this.input = input;
-
-        options.put("1", new MenuOption("Register new customer", this::registerCustomer));
-        options.put("2", new MenuOption("View customer details (by ID)", this::viewCustomer));
-        options.put("3", new MenuOption("Search customers by name", this::searchByName));
-        options.put("4", new MenuOption("List all customers", this::listAllCustomers));
-        options.put("5", new MenuOption("Update customer information", this::updateCustomer));
-        options.put("6", new MenuOption("Deactivate customer", this::deactivateCustomer));
+        this.menu = new Menu("Customer Management", input)
+                .option("Register new customer", this::registerCustomer)
+                .option("View customer details (by ID)", this::viewCustomer)
+                .option("Search customers by name", this::searchByName)
+                .option("List all customers", this::listAllCustomers)
+                .option("Update customer information", this::updateCustomer)
+                .option("Deactivate customer", this::deactivateCustomer)
+                .option("View customer's accounts", this::viewCustomerAccounts);
     }
 
     public void show() {
-        while (true) {
-            System.out.println("\n--- Customer Management ---");
-            options.forEach((key, option) -> System.out.println(key + ". " + option.label()));
-            System.out.println("0. Back");
-
-            String choice = input.readLine("Choose: ");
-            if (choice.equals("0")) {
-                return;
-            }
-
-            MenuOption option = options.get(choice);
-            if (option == null) {
-                System.out.println("Invalid option, try again.");
-                continue;
-            }
-            runSafely(option.action());
-        }
+        menu.show();
     }
 
     private void runSafely(Runnable action) {
@@ -58,6 +47,13 @@ public class CustomerMenu {
     }
 
     // ---------- Actions ----------
+
+    private void viewCustomerAccounts() {
+        Customer customer = customerService.getById(input.readRequired("Customer ID: "));
+        System.out.println("Accounts of " + customer.getFullName()
+                + " (" + customer.getCustomerId() + ")");
+        AccountPrinter.printTable(accountService.findByCustomer(customer.getCustomerId()));
+    }
 
     private void registerCustomer() {
         String fullName = input.readRequired("Full name: ");
