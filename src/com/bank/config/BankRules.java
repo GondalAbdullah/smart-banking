@@ -11,9 +11,9 @@ public record BankRules(
 
     public BankRules {
         requireNonNegative(savingsMinimumBalance, "Savings minimum balance");
-        requireNonNegative(savingsAnnualInterestRate, "Savings interest rate");
+        requireRate(savingsAnnualInterestRate, "Savings interest rate");
         requireNonNegative(currentOverdraftLimit, "Current overdraft limit");
-        requireNonNegative(fixedDepositAnnualInterestRate, "Fixed deposit interest rate");
+        requireRate(fixedDepositAnnualInterestRate, "Fixed deposit interest rate");
         if (savingsMonthlyWithdrawalLimit <= 0) {
             throw new IllegalArgumentException("Savings withdrawal limit must be positive");
         }
@@ -31,6 +31,15 @@ public record BankRules(
     private static void requireNonNegative(BigDecimal value, String fieldName) {
         if (value == null || value.signum() < 0) {
             throw new IllegalArgumentException(fieldName + " must be zero or more");
+        }
+    }
+    
+    /** A yearly rate written as a fraction: 0.04 means 4%. Above 1 is almost certainly a typo for a percentage. */
+    private static void requireRate(BigDecimal value, String fieldName) {
+        requireNonNegative(value, fieldName);
+        if (value.compareTo(BigDecimal.ONE) > 0) {
+            throw new IllegalArgumentException(
+                    fieldName + " must be a fraction between 0 and 1, e.g. 0.04 for 4%");
         }
     }
 }

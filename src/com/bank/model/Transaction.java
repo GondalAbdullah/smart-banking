@@ -10,6 +10,7 @@ import java.util.Objects;
  * One money movement. Immutable: a mistake is corrected by recording a new
  * transaction, never by editing an old one.
  *
+ * @param performedBy ID of the employee who carried it out
  * @param sourceAccount      where the money left; null for deposits and interest
  * @param destinationAccount where the money arrived; null for withdrawals
  * @param note               why a FAILED transaction was refused; null on success
@@ -22,7 +23,8 @@ public record Transaction(
         BigDecimal amount,
         LocalDateTime timestamp,
         TransactionStatus status,
-        String note) {
+        String note,
+        String performedBy) {
 
     /** Oldest first; the ID breaks ties between transactions in the same instant. */
     public static final Comparator<Transaction> CHRONOLOGICAL =
@@ -30,6 +32,8 @@ public record Transaction(
                     .thenComparing(Transaction::transactionId);
 
     public Transaction {
+        Objects.requireNonNull(status, "Status is required");
+        Objects.requireNonNull(performedBy, "Performing employee is required");
         Objects.requireNonNull(transactionId, "Transaction ID is required");
         Objects.requireNonNull(type, "Type is required");
         Objects.requireNonNull(timestamp, "Timestamp is required");

@@ -28,8 +28,6 @@ public abstract sealed class Account
         this.status = Objects.requireNonNull(status, "Status is required");
     }
 
-    // ---------- Template methods: the fixed steps every account follows ----------
-
     // ---------- Template methods: check first, then change ----------
 
     public final void deposit(BigDecimal amount) {

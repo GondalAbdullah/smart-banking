@@ -1,41 +1,61 @@
 package com.bank.ui;
 
-import com.bank.exception.NotFoundException;
+import com.bank.exception.BankException;
+import com.bank.model.Permission;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
+import java.util.function.Predicate;
 
 final class Menu {
 
     private final String title;
     private final ConsoleInput input;
-    private final Map<String, MenuOption> options = new LinkedHashMap<>();
+    private final Predicate<Permission> allowed;
+    private final List<MenuOption> options = new ArrayList<>();
+    private String exitLabel = "Back";
 
-    Menu(String title, ConsoleInput input) {
+    Menu(String title, ConsoleInput input, Predicate<Permission> allowed) {
         this.title = Objects.requireNonNull(title);
         this.input = Objects.requireNonNull(input);
+        this.allowed = Objects.requireNonNull(allowed);
     }
 
-    /** Adds an option numbered automatically 1, 2, 3... Returns this menu for chaining. */
+    /** An option every logged-in employee can use. */
     Menu option(String label, Runnable action) {
-        String key = String.valueOf(options.size() + 1);
-        options.put(key, new MenuOption(label, action));
+        return option(label, null, action);
+    }
+
+    /** An option shown only to employees with the given permission. */
+    Menu option(String label, Permission required, Runnable action) {
+        options.add(new MenuOption(label, required, action));
+        return this;
+    }
+
+    Menu exitLabel(String label) {
+        this.exitLabel = Objects.requireNonNull(label);
         return this;
     }
 
     void show() {
         while (true) {
+            // Recomputed every time, so the menu follows the employee's current permissions.
+            List<MenuOption> visible = options.stream()
+                    .filter(option -> option.isAllowed(allowed))
+                    .toList();
+
             System.out.println("\n--- " + title + " ---");
-            options.forEach((key, option) -> System.out.println(key + ". " + option.label()));
-            System.out.println("0. Back");
+            for (int i = 0; i < visible.size(); i++) {
+                System.out.println((i + 1) + ". " + visible.get(i).label());
+            }
+            System.out.println("0. " + exitLabel);
 
             String choice = input.readLine("Choose: ");
             if (choice.equals("0")) {
                 return;
             }
-
-            MenuOption option = options.get(choice);
+            MenuOption option = pick(visible, choice);
             if (option == null) {
                 System.out.println("Invalid option, try again.");
                 continue;
@@ -44,10 +64,19 @@ final class Menu {
         }
     }
 
+    private static MenuOption pick(List<MenuOption> visible, String choice) {
+        try {
+            int index = Integer.parseInt(choice);
+            return (index >= 1 && index <= visible.size()) ? visible.get(index - 1) : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private void runSafely(Runnable action) {
         try {
             action.run();
-        } catch (IllegalArgumentException | IllegalStateException | NotFoundException e) {
+        } catch (IllegalArgumentException | IllegalStateException | BankException e) {
             System.out.println("Error: " + e.getMessage());
         }
     }

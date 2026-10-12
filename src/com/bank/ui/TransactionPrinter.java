@@ -8,7 +8,7 @@ import java.util.List;
 final class TransactionPrinter {
 
     private static final DateTimeFormatter WHEN = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-    private static final String ROW_FORMAT = "%-8s %-17s %-26s %12s %-8s%n";
+    private static final String ROW_FORMAT = "%-8s %-17s %-26s %12s %-8s %-6s%n";
 
     private TransactionPrinter() {
         // utility class: no instances
@@ -25,11 +25,11 @@ final class TransactionPrinter {
             System.out.println("No transactions found.");
             return;
         }
-        System.out.printf(ROW_FORMAT, "Ref", "When", "Description", "Amount", "Status");
+        System.out.printf(ROW_FORMAT, "Ref", "When", "Description", "Amount", "Status", "By");
         for (Transaction tx : transactions) {
             System.out.printf(ROW_FORMAT, tx.transactionId(), WHEN.format(tx.timestamp()),
                     describe(tx, accountNumber), "%+.2f".formatted(tx.amountFor(accountNumber)),
-                    tx.status());
+                    tx.status(), tx.performedBy());
             if (!tx.isSuccessful()) {
                 System.out.println("         Reason: " + tx.note());
             }
