@@ -30,20 +30,37 @@ public abstract sealed class Account
 
     // ---------- Template methods: the fixed steps every account follows ----------
 
+    // ---------- Template methods: check first, then change ----------
+
     public final void deposit(BigDecimal amount) {
-        requireActive();
-        BigDecimal money = validAmount(amount);
-        validateDeposit(money);
+        BigDecimal money = checkDeposit(amount);
         balance = balance.add(money);
     }
 
     public final void withdraw(BigDecimal amount, LocalDate today) {
-        requireActive();
-        BigDecimal money = validAmount(amount);
-        Objects.requireNonNull(today, "Date is required");
-        validateWithdrawal(money, today);
+        BigDecimal money = checkWithdrawal(amount, today);
         balance = balance.subtract(money);
         onWithdrawal(today);
+    }
+
+    /**
+     * Runs every deposit rule without changing anything.
+     * Bad input -> IllegalArgumentException. A rule refuses it -> TransactionNotAllowedException.
+     */
+    public final BigDecimal checkDeposit(BigDecimal amount) {
+        BigDecimal money = validAmount(amount);   // 1. is the input well-formed?
+        requireActive();                          // 2. is the account usable?
+        validateDeposit(money);                   // 3. does this account type allow it?
+        return money;
+    }
+
+    /** Runs every withdrawal rule without changing anything. Same exceptions as checkDeposit. */
+    public final BigDecimal checkWithdrawal(BigDecimal amount, LocalDate today) {
+        BigDecimal money = validAmount(amount);
+        Objects.requireNonNull(today, "Date is required");
+        requireActive();
+        validateWithdrawal(money, today);
+        return money;
     }
 
     /** Adds this month's interest to the balance and returns the amount added. */
