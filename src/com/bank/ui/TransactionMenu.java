@@ -1,6 +1,7 @@
 package com.bank.ui;
 
 import com.bank.model.Account;
+import com.bank.model.Permission;
 import com.bank.model.Transaction;
 import com.bank.model.TransactionType;
 import com.bank.service.AccountService;
@@ -9,6 +10,7 @@ import com.bank.service.TransactionService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.function.Predicate;
 
 public class TransactionMenu {
 
@@ -18,18 +20,18 @@ public class TransactionMenu {
     private final Menu menu;
 
     public TransactionMenu(TransactionService transactionService, AccountService accountService,
-                           ConsoleInput input) {
+                           ConsoleInput input, Predicate<Permission> allowed) {
         this.transactionService = transactionService;
         this.accountService = accountService;
         this.input = input;
-        this.menu = new Menu("Transactions", input)
-                .option("Deposit", this::deposit)
-                .option("Withdraw", this::withdraw)
-                .option("Transfer", this::transfer)
+        this.menu = new Menu("Transactions", input, allowed)
+                .option("Deposit", Permission.PROCESS_TRANSACTIONS, this::deposit)
+                .option("Withdraw", Permission.PROCESS_TRANSACTIONS, this::withdraw)
+                .option("Transfer", Permission.PROCESS_TRANSACTIONS, this::transfer)
                 .option("Transaction history", this::history)
                 .option("Search transactions", this::search)
                 .option("Mini statement (last 5)", this::miniStatement)
-                .option("Apply monthly interest", this::applyInterest);
+                .option("Apply monthly interest", Permission.APPLY_INTEREST, this::applyInterest);
     }
 
     public void show() {

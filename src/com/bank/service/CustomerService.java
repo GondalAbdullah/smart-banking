@@ -1,7 +1,9 @@
 package com.bank.service;
 
 import com.bank.exception.NotFoundException;
+import com.bank.model.AuditAction;
 import com.bank.model.Customer;
+import com.bank.model.Permission;
 import com.bank.repository.CustomerRepository;
 
 import java.util.List;
@@ -10,13 +12,16 @@ import java.util.Objects;
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
+    private final Session session;
 
-    public CustomerService(CustomerRepository customerRepository) {
+    public CustomerService(CustomerRepository customerRepository, Session session) {
         this.customerRepository = Objects.requireNonNull(
                 customerRepository, "Customer repository is required");
+        this.session = Objects.requireNonNull(session, "Session is required");
     }
 
     public Customer register(String fullName, String email, String phone, String address) {
+        session.require(Permission.REGISTER_CUSTOMER);
         Customer customer = Customer.register(
                 customerRepository.nextId(), fullName, email, phone, address);
         customerRepository.add(customer);
@@ -24,6 +29,7 @@ public class CustomerService {
     }
 
     public Customer updateDetails(String customerId, CustomerUpdate changes) {
+        session.require(Permission.UPDATE_CUSTOMER);
         Objects.requireNonNull(changes, "Changes are required");
         Customer current = getById(customerId);
 
@@ -58,9 +64,11 @@ public class CustomerService {
     }
 
     public void deactivate(String customerId) {
+        session.require(Permission.DEACTIVATE_CUSTOMER);
         Customer customer = getById(customerId);
         customer.deactivate();
         customerRepository.update(customer);
+        session.audit(AuditAction.CUSTOMER_DEACTIVATED, customer.getCustomerId());
     }
 
     /** Used by the account module: a deactivated customer cannot open new accounts. */

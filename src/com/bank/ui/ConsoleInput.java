@@ -5,6 +5,8 @@ import java.util.Objects;
 import java.util.Scanner;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.io.Console;
+import java.util.Arrays;
 
 public class ConsoleInput {
 
@@ -80,13 +82,22 @@ public class ConsoleInput {
 
     /** Lists the constants of any enum and lets the user pick one. Empty input returns null. */
     public <E extends Enum<E>> E chooseOptional(String prompt, Class<E> enumType) {
+        return choose(prompt, enumType, true);
+    }
+
+    /** Like chooseOptional, but keeps asking until the user picks something. */
+    public <E extends Enum<E>> E chooseRequired(String prompt, Class<E> enumType) {
+        return choose(prompt, enumType, false);
+    }
+
+    private <E extends Enum<E>> E choose(String prompt, Class<E> enumType, boolean optional) {
         E[] choices = enumType.getEnumConstants();
         for (int i = 0; i < choices.length; i++) {
             System.out.println((i + 1) + ". " + choices[i]);
         }
         while (true) {
             String text = readLine(prompt);
-            if (text.isEmpty()) {
+            if (text.isEmpty() && optional) {
                 return null;
             }
             try {
@@ -97,7 +108,36 @@ public class ConsoleInput {
             } catch (NumberFormatException ignored) {
                 // falls through to the message below
             }
-            System.out.println("Choose 1 to " + choices.length + ", or press Enter for any");
+            System.out.println("Choose 1 to " + choices.length
+                    + (optional ? ", or press Enter for any" : ""));
+        }
+    }
+
+    /**
+     * Reads a password as char[] so the caller can wipe it afterwards.
+     * In a real terminal the typing is hidden; IDE consoles have no System.console(), so it shows.
+     */
+    public char[] readPassword(String prompt) {
+        Console console = System.console();
+        if (console != null) {
+            char[] password = console.readPassword(prompt);
+            return (password == null) ? new char[0] : password;
+        }
+        return readLine(prompt).toCharArray();
+    }
+
+    /** Asks twice until both entries match. Whether it is strong enough is the service's job. */
+    public char[] readNewPassword(String prompt) {
+        while (true) {
+            char[] first = readPassword(prompt);
+            char[] second = readPassword("Confirm password: ");
+            boolean same = Arrays.equals(first, second);
+            Arrays.fill(second, '\0');
+            if (same) {
+                return first;
+            }
+            Arrays.fill(first, '\0');
+            System.out.println("The two entries do not match. Try again.");
         }
     }
 }

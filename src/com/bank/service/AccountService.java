@@ -3,14 +3,16 @@ package com.bank.service;
 import com.bank.config.BankRules;
 import com.bank.exception.NotFoundException;
 import com.bank.model.Account;
+import com.bank.model.AuditAction;
 import com.bank.model.CurrentAccount;
 import com.bank.model.FixedDepositAccount;
+import com.bank.model.Permission;
 import com.bank.model.SavingsAccount;
-import com.bank.repository.AccountRepository;
 import com.bank.model.TransactionType;
+import com.bank.repository.AccountRepository;
 
-import java.time.Clock;
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
@@ -24,6 +26,7 @@ public class AccountService {
     private final Supplier<BankRules> rules;
     private final Predicate<String> hasOutstandingLoan;
     private final Ledger ledger;
+    private final Session session;
     private final Clock clock;
 
     public AccountService(AccountRepository accountRepository,
@@ -31,18 +34,21 @@ public class AccountService {
                           Supplier<BankRules> rules,
                           Predicate<String> hasOutstandingLoan,
                           Ledger ledger,
+                          Session session,
                           Clock clock) {
         this.accountRepository = Objects.requireNonNull(accountRepository);
         this.customerService = Objects.requireNonNull(customerService);
         this.rules = Objects.requireNonNull(rules);
         this.hasOutstandingLoan = Objects.requireNonNull(hasOutstandingLoan);
         this.ledger = Objects.requireNonNull(ledger);
+        this.session = Objects.requireNonNull(session);
         this.clock = Objects.requireNonNull(clock);
     }
 
     // ---------- Opening ----------
 
     public SavingsAccount openSavings(String customerId, BigDecimal openingDeposit) {
+        session.require(Permission.OPEN_ACCOUNT);
         String ownerId = customerService.getActiveCustomer(customerId).getCustomerId();
         BankRules r = rules.get();
         return saveNew(SavingsAccount.open(
@@ -52,6 +58,7 @@ public class AccountService {
     }
 
     public CurrentAccount openCurrent(String customerId, BigDecimal openingDeposit) {
+        session.require(Permission.OPEN_ACCOUNT);
         String ownerId = customerService.getActiveCustomer(customerId).getCustomerId();
         return saveNew(CurrentAccount.open(
                 accountRepository.nextAccountNumber(), ownerId, openingDeposit,
@@ -60,6 +67,7 @@ public class AccountService {
 
     public FixedDepositAccount openFixedDeposit(String customerId, BigDecimal deposit,
                                                 int termMonths) {
+        session.require(Permission.OPEN_ACCOUNT);
         String ownerId = customerService.getActiveCustomer(customerId).getCustomerId();
         return saveNew(FixedDepositAccount.open(
                 accountRepository.nextAccountNumber(), ownerId, deposit,
@@ -72,10 +80,6 @@ public class AccountService {
         ledger.recordSuccess(TransactionType.OPENING_DEPOSIT, null,
                 account.getAccountNumber(), account.getBalance());
         return account;
-    }
-
-    private LocalDate today() {
-        return LocalDate.now(clock);
     }
 
     // ---------- Queries ----------
@@ -94,18 +98,23 @@ public class AccountService {
     // ---------- Status ----------
 
     public void freeze(String accountNumber) {
+        session.require(Permission.MANAGE_ACCOUNT_STATUS);
         Account account = getByNumber(accountNumber);
         account.freeze();
         accountRepository.update(account);
+        session.audit(AuditAction.ACCOUNT_FROZEN, account.getAccountNumber());
     }
 
     public void activate(String accountNumber) {
+        session.require(Permission.MANAGE_ACCOUNT_STATUS);
         Account account = getByNumber(accountNumber);
         account.activate();
         accountRepository.update(account);
+        session.audit(AuditAction.ACCOUNT_UNFROZEN, account.getAccountNumber());
     }
 
     public void close(String accountNumber) {
+        session.require(Permission.MANAGE_ACCOUNT_STATUS);
         Account account = getByNumber(accountNumber);
         if (hasOutstandingLoan.test(account.getAccountNumber())) {
             throw new IllegalStateException("Account " + account.getAccountNumber()
@@ -113,6 +122,11 @@ public class AccountService {
         }
         account.close();
         accountRepository.update(account);
+        session.audit(AuditAction.ACCOUNT_CLOSED, account.getAccountNumber());
+    }
+
+    private LocalDate today() {
+        return LocalDate.now(clock);
     }
 
     private static String normalize(String accountNumber) {

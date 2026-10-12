@@ -3,6 +3,8 @@ package com.bank.service;
 import com.bank.exception.TransactionNotAllowedException;
 import com.bank.model.Account;
 import com.bank.model.AccountStatus;
+import com.bank.model.AuditAction;
+import com.bank.model.Permission;
 import com.bank.model.Transaction;
 import com.bank.model.TransactionSearch;
 import com.bank.model.TransactionType;
@@ -24,23 +26,27 @@ public class TransactionService {
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
     private final Ledger ledger;
+    private final Session session;
     private final Clock clock;
 
     public TransactionService(AccountService accountService,
                               AccountRepository accountRepository,
                               TransactionRepository transactionRepository,
                               Ledger ledger,
+                              Session session,
                               Clock clock) {
         this.accountService = Objects.requireNonNull(accountService);
         this.accountRepository = Objects.requireNonNull(accountRepository);
         this.transactionRepository = Objects.requireNonNull(transactionRepository);
         this.ledger = Objects.requireNonNull(ledger);
+        this.session = Objects.requireNonNull(session);
         this.clock = Objects.requireNonNull(clock);
     }
 
     // ---------- Money movement ----------
 
     public Transaction deposit(String accountNumber, BigDecimal amount) {
+        session.require(Permission.PROCESS_TRANSACTIONS);
         Account account = accountService.getByNumber(accountNumber);
         String number = account.getAccountNumber();
 
@@ -52,6 +58,7 @@ public class TransactionService {
     }
 
     public Transaction withdraw(String accountNumber, BigDecimal amount) {
+        session.require(Permission.PROCESS_TRANSACTIONS);
         Account account = accountService.getByNumber(accountNumber);
         String number = account.getAccountNumber();
         LocalDate today = today();
@@ -65,6 +72,7 @@ public class TransactionService {
 
     /** Atomic: either both balances change or neither does. One transaction, one reference. */
     public Transaction transfer(String fromNumber, String toNumber, BigDecimal amount) {
+        session.require(Permission.PROCESS_TRANSACTIONS);
         Account source = accountService.getByNumber(fromNumber);
         Account destination = accountService.getByNumber(toNumber);
         if (source.equals(destination)) {
@@ -90,6 +98,7 @@ public class TransactionService {
 
     /** Credits a month's interest to every active account. Returns the interest transactions. */
     public List<Transaction> applyMonthlyInterest() {
+        session.require(Permission.APPLY_INTEREST);
         List<Transaction> credited = new ArrayList<>();
         for (Account account : accountRepository.findAll()) {
             if (account.getStatus() != AccountStatus.ACTIVE) {
@@ -102,6 +111,11 @@ public class TransactionService {
                         account.getAccountNumber(), interest));
             }
         }
+        BigDecimal total = credited.stream()
+                .map(Transaction::amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        session.audit(AuditAction.INTEREST_APPLIED,
+                credited.size() + " account(s), total " + total);
         return credited;
     }
 

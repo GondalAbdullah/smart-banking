@@ -1,10 +1,12 @@
 package com.bank.ui;
 
 import com.bank.model.Account;
+import com.bank.model.Permission;
 import com.bank.service.AccountService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.function.Predicate;
 
 public class AccountMenu {
 
@@ -12,17 +14,18 @@ public class AccountMenu {
     private final ConsoleInput input;
     private final Menu menu;
 
-    public AccountMenu(AccountService accountService, ConsoleInput input) {
+    public AccountMenu(AccountService accountService, ConsoleInput input,
+                       Predicate<Permission> allowed) {
         this.accountService = accountService;
         this.input = input;
-        this.menu = new Menu("Account Management", input)
-                .option("Open savings account", this::openSavings)
-                .option("Open current account", this::openCurrent)
-                .option("Open fixed deposit", this::openFixedDeposit)
+        this.menu = new Menu("Account Management", input, allowed)
+                .option("Open savings account", Permission.OPEN_ACCOUNT, this::openSavings)
+                .option("Open current account", Permission.OPEN_ACCOUNT, this::openCurrent)
+                .option("Open fixed deposit", Permission.OPEN_ACCOUNT, this::openFixedDeposit)
                 .option("View account details and balance", this::viewAccount)
-                .option("Freeze account", this::freezeAccount)
-                .option("Unfreeze account", this::unfreezeAccount)
-                .option("Close account", this::closeAccount);
+                .option("Freeze account", Permission.MANAGE_ACCOUNT_STATUS, this::freezeAccount)
+                .option("Unfreeze account", Permission.MANAGE_ACCOUNT_STATUS, this::unfreezeAccount)
+                .option("Close account", Permission.MANAGE_ACCOUNT_STATUS, this::closeAccount);
     }
 
     public void show() {

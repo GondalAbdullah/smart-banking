@@ -1,11 +1,13 @@
 package com.bank.ui;
 
 import com.bank.model.Customer;
+import com.bank.model.Permission;
 import com.bank.service.AccountService;
 import com.bank.service.CustomerService;
 import com.bank.service.CustomerUpdate;
 
 import java.util.List;
+import java.util.function.Predicate;
 
 public class CustomerMenu {
 
@@ -17,17 +19,17 @@ public class CustomerMenu {
     private final Menu menu;
 
     public CustomerMenu(CustomerService customerService, AccountService accountService,
-                        ConsoleInput input) {
+                        ConsoleInput input, Predicate<Permission> allowed) {
         this.customerService = customerService;
         this.accountService = accountService;
         this.input = input;
-        this.menu = new Menu("Customer Management", input)
-                .option("Register new customer", this::registerCustomer)
+        this.menu = new Menu("Customer Management", input, allowed)
+                .option("Register new customer", Permission.REGISTER_CUSTOMER, this::registerCustomer)
                 .option("View customer details (by ID)", this::viewCustomer)
                 .option("Search customers by name", this::searchByName)
                 .option("List all customers", this::listAllCustomers)
-                .option("Update customer information", this::updateCustomer)
-                .option("Deactivate customer", this::deactivateCustomer)
+                .option("Update customer information", Permission.UPDATE_CUSTOMER, this::updateCustomer)
+                .option("Deactivate customer", Permission.DEACTIVATE_CUSTOMER, this::deactivateCustomer)
                 .option("View customer's accounts", this::viewCustomerAccounts);
     }
 

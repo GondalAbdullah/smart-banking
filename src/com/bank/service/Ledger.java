@@ -17,10 +17,12 @@ import java.util.Objects;
 public class Ledger {
 
     private final TransactionRepository repository;
+    private final Session session;
     private final Clock clock;
 
-    public Ledger(TransactionRepository repository, Clock clock) {
+    public Ledger(TransactionRepository repository, Session session, Clock clock) {
         this.repository = Objects.requireNonNull(repository);
+        this.session = Objects.requireNonNull(session);
         this.clock = Objects.requireNonNull(clock);
     }
 
@@ -37,7 +39,8 @@ public class Ledger {
     private Transaction record(TransactionType type, String source, String destination,
                                BigDecimal amount, TransactionStatus status, String note) {
         Transaction transaction = new Transaction(repository.nextId(), type, source, destination,
-                amount, LocalDateTime.now(clock), status, note);
+                amount, LocalDateTime.now(clock), status, note,
+                session.employee().getEmployeeId());
         repository.add(transaction);
         return transaction;
     }
