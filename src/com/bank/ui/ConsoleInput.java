@@ -1,5 +1,6 @@
 package com.bank.ui;
 
+import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.Scanner;
 
@@ -32,4 +33,32 @@ public class ConsoleInput {
         String answer = readLine(prompt + " (y/n): ");
         return answer.equalsIgnoreCase("y") || answer.equalsIgnoreCase("yes");
     }
+
+    /** Keeps asking until the input is a number. Whether the amount is VALID is the model's job. */
+    public BigDecimal readAmount(String prompt) {
+        while (true) {
+            String text = readRequired(prompt);
+            try {
+                return new BigDecimal(text);
+            } catch (NumberFormatException e) {
+                System.out.println("Please enter a number, e.g. 2500 or 2500.50");
+            }
+        }
+    }
+
+    public int readPositiveInt(String prompt) {
+        while (true) {
+            String text = readRequired(prompt);
+            try {
+                int value = Integer.parseInt(text);
+                if (value > 0) {
+                    return value;
+                }
+            } catch (NumberFormatException ignored) {
+                // falls through to the message below
+            }
+            System.out.println("Please enter a whole number greater than zero");
+        }
+    }
 }
+
