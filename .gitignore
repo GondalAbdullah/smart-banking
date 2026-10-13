@@ -1,2 +1,28 @@
-Smart Banking Management System — Project Specification.pdf
+# Compiled classes
 out/
+out-test/
+bin/
+target/
+*.class
+
+# Libraries (the JUnit jar is downloaded locally, see README)
+lib/
+
+# Data the app creates when it runs
+data/*.csv
+
+# Logs and JVM crash files
+*.log
+hs_err_pid*
+
+# VS Code: keep the shared project settings, ignore the rest
+.vscode/*
+!.vscode/settings.json
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
