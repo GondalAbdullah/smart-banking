@@ -8,16 +8,16 @@ import com.bank.repository.AccountRepository;
 import com.bank.repository.AuditRepository;
 import com.bank.repository.CustomerRepository;
 import com.bank.repository.EmployeeRepository;
-import com.bank.repository.InMemoryAccountRepository;
-import com.bank.repository.InMemoryAuditRepository;
-import com.bank.repository.InMemoryCustomerRepository;
-import com.bank.repository.InMemoryEmployeeRepository;
-import com.bank.repository.InMemoryLoanRepository;
 import com.bank.repository.LoanRepository;
-import com.bank.repository.InMemoryTransactionRepository;
 import com.bank.repository.PropertiesRulesRepository;
 import com.bank.repository.RulesRepository;
 import com.bank.repository.TransactionRepository;
+import com.bank.repository.csv.CsvAccountRepository;
+import com.bank.repository.csv.CsvAuditRepository;
+import com.bank.repository.csv.CsvCustomerRepository;
+import com.bank.repository.csv.CsvEmployeeRepository;
+import com.bank.repository.csv.CsvLoanRepository;
+import com.bank.repository.csv.CsvTransactionRepository;
 import com.bank.security.PasswordHasher;
 import com.bank.service.AccountService;
 import com.bank.service.AuditLog;
@@ -40,6 +40,7 @@ import com.bank.ui.MainMenu;
 import com.bank.ui.ReportScreen;
 import com.bank.ui.TransactionMenu;
 
+
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.Scanner;
@@ -51,27 +52,25 @@ public class Main {
         ConsoleInput input = new ConsoleInput(new Scanner(System.in));
         Clock clock = Clock.systemDefaultZone();
 
-        // Repositories
-        CustomerRepository customerRepository = new InMemoryCustomerRepository();
-        AccountRepository accountRepository = new InMemoryAccountRepository();
-        TransactionRepository transactionRepository = new InMemoryTransactionRepository();
-        EmployeeRepository employeeRepository = new InMemoryEmployeeRepository();
-        AuditRepository auditRepository = new InMemoryAuditRepository();
-        RulesRepository rulesRepository = new PropertiesRulesRepository(Path.of("data", "rules.properties"));
-        LoanRepository loanRepository = new InMemoryLoanRepository();
+        // Repositories: everything is saved in the data folder
+        Path data = Path.of("data");
+        CustomerRepository customerRepository = new CsvCustomerRepository(data.resolve("customers.csv"));
+        AccountRepository accountRepository = new CsvAccountRepository(data.resolve("accounts.csv"));
+        TransactionRepository transactionRepository = new CsvTransactionRepository(data.resolve("transactions.csv"));
+        EmployeeRepository employeeRepository = new CsvEmployeeRepository(data.resolve("employees.csv"));
+        AuditRepository auditRepository = new CsvAuditRepository(data.resolve("audit.csv"));
+        LoanRepository loanRepository = new CsvLoanRepository(data.resolve("loans.csv"));
+        RulesRepository rulesRepository = new PropertiesRulesRepository(data.resolve("rules.properties"));
 
-        // Security
         PasswordHasher hasher = new PasswordHasher();
         AuditLog auditLog = new AuditLog(auditRepository, clock);
         Session session = new Session(auditLog);
 
-        // Events: services publish what happened; listeners (like notifications) react
         EventBus eventBus = new EventBus();
         NotificationService notificationService =
                 new NotificationService(customerRepository, new ConsoleEmailSender());
         eventBus.subscribe(notificationService::handle);
 
-        // Services
         AuthService authService = new AuthService(employeeRepository, hasher, session, auditLog);
         EmployeeService employeeService = new EmployeeService(employeeRepository, hasher, session, auditLog);
         RulesService rulesService = new RulesService(rulesRepository, session);
@@ -80,7 +79,7 @@ public class Main {
         AccountService accountService = new AccountService(
                 accountRepository,
                 customerService,
-                rulesService::current,  // asks for the rules in force each time an account opens
+                rulesService::current,
                 loanRepository::hasOutstandingLoan,
                 ledger,
                 session,
@@ -94,7 +93,6 @@ public class Main {
         ReportService reportService = new ReportService(
                 customerRepository, accountRepository, loanRepository, session, clock);
 
-        // Menus: they get a read-only question ("may the current user do X?"), never the Session
         Predicate<Permission> allowed = session::can;
         CustomerMenu customerMenu = new CustomerMenu(customerService, accountService, input, allowed);
         AccountMenu accountMenu = new AccountMenu(accountService, input, allowed);

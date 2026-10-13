@@ -62,3 +62,11 @@ Answers to the questions the specification leaves open. When a choice was unclea
 | How are repayments taken? | From the linked account, under that account's normal withdrawal rules (a savings repayment counts toward the monthly limit). At most the outstanding amount. |
 | Can one account have several loans? | Yes. |
 | Notifications | The customer is emailed when a loan is approved or rejected. Repayments send nothing. |
+
+## Persistence
+
+- one file per entity
+- rewrite vs append
+- empty field means no value
+- the header is checked on load
+- the crash limitation above

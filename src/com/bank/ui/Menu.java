@@ -3,6 +3,7 @@ package com.bank.ui;
 import com.bank.exception.BankException;
 import com.bank.model.Permission;
 
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -22,12 +23,10 @@ final class Menu {
         this.allowed = Objects.requireNonNull(allowed);
     }
 
-    /** An option every logged-in employee can use. */
     Menu option(String label, Runnable action) {
         return option(label, null, action);
     }
 
-    /** An option shown only to employees with the given permission. */
     Menu option(String label, Permission required, Runnable action) {
         options.add(new MenuOption(label, required, action));
         return this;
@@ -40,7 +39,6 @@ final class Menu {
 
     void show() {
         while (true) {
-            // Recomputed every time, so the menu follows the employee's current permissions.
             List<MenuOption> visible = options.stream()
                     .filter(option -> option.isAllowed(allowed))
                     .toList();
@@ -78,6 +76,8 @@ final class Menu {
             action.run();
         } catch (IllegalArgumentException | IllegalStateException | BankException e) {
             System.out.println("Error: " + e.getMessage());
+        } catch (UncheckedIOException e) {
+            System.out.println("Error: " + e.getMessage() + " (" + e.getCause().getMessage() + ")");
         }
     }
 }

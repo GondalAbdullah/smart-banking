@@ -15,11 +15,24 @@ public final class PasswordHasher {
 
     private static final String ALGORITHM = "PBKDF2WithHmacSHA256";
     private static final String FORMAT_ID = "pbkdf2-sha256";
-    private static final int ITERATIONS = 600_000;
+    private static final int DEFAULT_ITERATIONS = 600_000;
     private static final int SALT_BYTES = 16;
     private static final int HASH_BITS = 256;
 
     private final SecureRandom random = new SecureRandom();
+    private final int iterations;
+
+    public PasswordHasher() {
+        this(DEFAULT_ITERATIONS);
+    }
+
+    /** Fewer iterations hash faster but are easier to brute-force. Only tests should pass a small number. */
+    public PasswordHasher(int iterations) {
+        if (iterations < 1) {
+            throw new IllegalArgumentException("Iterations must be at least 1");
+        }
+        this.iterations = iterations;
+    }
 
     public String hash(char[] password) {
         if (password == null || password.length == 0) {
@@ -27,10 +40,10 @@ public final class PasswordHasher {
         }
         byte[] salt = new byte[SALT_BYTES];
         random.nextBytes(salt);
-        byte[] hash = derive(password, salt, ITERATIONS);
+        byte[] hash = derive(password, salt, iterations);
 
         Base64.Encoder base64 = Base64.getEncoder();
-        return String.join("$", FORMAT_ID, String.valueOf(ITERATIONS),
+        return String.join("$", FORMAT_ID, String.valueOf(iterations),
                 base64.encodeToString(salt), base64.encodeToString(hash));
     }
 
